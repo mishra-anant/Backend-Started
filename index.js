@@ -1,6 +1,7 @@
 const fs = require("fs");
 const http = require("http");
 const url = require("url");
+const slugify = require("slugify");
 const replaceTemplate = require("./modules/Replace_template");
 
 // Function to replace template placeholders
@@ -22,6 +23,13 @@ const tempProduct = fs.readFileSync(
 // Read and parse JSON data
 const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, "utf-8");
 const dataObj = JSON.parse(data);
+console.log(dataObj)
+//using slugify
+const slugs = dataObj.map((el) => {
+  return slugify(el.productName, { lower: true });
+});
+console.log(slugs);
+
 
 // Create server
 const server = http.createServer((req, res) => {
