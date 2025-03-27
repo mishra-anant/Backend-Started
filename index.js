@@ -1,33 +1,11 @@
 const fs = require("fs");
 const http = require("http");
 const url = require("url");
+const replaceTemplate = require("./modules/Replace_template");
 
-//////////////////////////////////////////////////////////////
-//Blocking,synchronous way
-// const textIn = fs.readFileSync("./txt/input.txt", "utf-8");
-// console.log(textIn);
-// const textOut = `This is what we know about the avacado: ${textIn}.\nCreated on date ${Date.now()}`;
-// fs.writeFileSync("./txt/output.txt", textOut);
-// console.log("File Written");
+// Function to replace template placeholders
 
-//Non-blocking asynchronous way
-// fs.readFile("./txt/staaaaaaaaaaaaart.txt", "utf-8", (err, data1) => {
-//   if (err) return console.log("ERROR");
-
-//   fs.readFile(`./txt/${data1}.txt`, "utf-8", (err, data2) => {
-//     console.log(data2);
-//     fs.readFile(`./txt/append.txt`, "utf-8", (err, data3) => {
-//       console.log(data3);
-//       fs.writeFile("./txt/final.txt", `${data2}\n${data3}`, "utf8", (err) => {
-//         console.log("Your File has been written!");
-//       });
-//     });
-//   });
-// });
-// console.log("will read file!");
-
-///////////////////////////////////////////////
-//serever
+// Read template files
 const tempOverview = fs.readFileSync(
   `${__dirname}/templates/template-overview.html`,
   "utf-8"
@@ -41,39 +19,54 @@ const tempProduct = fs.readFileSync(
   "utf-8"
 );
 
+// Read and parse JSON data
 const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, "utf-8");
 const dataObj = JSON.parse(data);
 
+// Create server
 const server = http.createServer((req, res) => {
-  const pathName = req.url;
+  const { query, pathname } = url.parse(req.url, true);
+  console.log(pathname);
 
-  //Overview page
-  if (pathName === "/" || pathName == "/overview") {
+  // Overview page
+  if (pathname === "/" || pathname === "/overview") {
     res.writeHead(200, { "Content-type": "text/html" });
 
-    const cardsHtml = dataObj.map((el) => replaceTemplate(tempCard, el));
+    const cardsHtml = dataObj
+      .map((el) => replaceTemplate(tempCard, el))
+      .join("");
+    const output = tempOverview.replace("{%PRODUCT_CARDS%}", cardsHtml);
 
-    res.end(tempOverview);
+    res.end(output);
 
-    //Product Page
-  } else if (pathName === "/product") {
-    res.end("This is the PRODUCT");
+    // Product Page (Dynamic ID handling)
+  } else if (pathname === "/product") {
+    const product = dataObj[query.id]; // Get product by ID
+    if (product) {
+      const output = replaceTemplate(tempProduct, product);
+      res.writeHead(200, { "Content-type": "text/html" });
+      res.end(output);
+    } else {
+      res.writeHead(404, { "Content-type": "text/html" });
+      res.end("<h1>Product not found!</h1>");
+    }
 
-    //API
-  } else if (pathName === "/api") {
+    // API Endpoint
+  } else if (pathname === "/api") {
     res.writeHead(200, { "Content-type": "application/json" });
     res.end(data);
 
-    //Not found
+    // Not found
   } else {
     res.writeHead(404, {
-      "content-type": "text/html",
+      "Content-type": "text/html",
       "my-own-header": "hello-world",
     });
     res.end("<h1>Page not found!</h1>");
   }
 });
 
+// Start server
 server.listen(8000, "127.0.0.1", () => {
   console.log("Listening to requests on port 8000");
 });
